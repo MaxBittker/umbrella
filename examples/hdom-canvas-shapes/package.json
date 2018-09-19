@@ -20,7 +20,9 @@
         "@thi.ng/hiccup-svg": "latest",
         "@thi.ng/rstream": "latest",
         "@thi.ng/transducers": "latest",
-        "@thi.ng/transducers-hdom": "latest"
+        "@thi.ng/transducers-hdom": "latest",
+        "@thi.ng/vectors": "^1.2.0",
+        "pf-perlin": "^1.1.0"
     },
     "browserslist": [
         "last 3 Chrome versions"
