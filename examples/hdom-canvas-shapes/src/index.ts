@@ -12,96 +12,52 @@ import {updateDOM} from '@thi.ng/transducers-hdom';
 import {range} from '@thi.ng/transducers/iter/range';
 import {repeatedly} from '@thi.ng/transducers/iter/repeatedly';
 import {map} from '@thi.ng/transducers/xform/map';
-import {Mat23} from '@thi.ng/vectors/mat23';
-
+import {add2o, subN2} from '@thi.ng/vectors/vec2';
 import Perlin from 'pf-perlin';
 
 import logo from '../assets/logo-64.png'; // ignore error, resolved by parcel
 
 import {download} from './download';
+import {distance, Position, randdir, randpos, scale} from './position';
+import {SpatialMap} from './spatialMap';
 
-const add = (a, b) => [a[0] + b[0], a[1], b[1]];
-const scale = (a, s) => [a[0] * s, a[1] * s];
 
-const perlin3D = new Perlin({dimensions: 2, wavelength: 0.2, octaves: 4})
-
-type Position = Array<number>;
-
-class SpatialMap {
-  cell_size: number;
-  grid: Map<String, Array<Position>>;
-  constructor(cell_size: number) {
-    this.cell_size = cell_size;
-    this.grid = new Map();
-  }
-
-  _key(pos: Position) {
-    return `${Math.floor(pos[0] / this.cell_size) * this.cell_size} ${
-        Math.floor(pos[1] / this.cell_size) * this.cell_size}`;
-  };
-
-  insert = function(pos: Position) {
-    var obkey = this._key(pos);
-    var grid = this.grid;
-
-    if (!grid[obkey]) {
-      grid[obkey] = [];
-    }
-
-    grid[obkey].push(pos);
-  };
-
-  getClosest = function(pos: Position) {
-    return this.grid[this._key(pos)] || [];
-  };
-  getNeighbors = function(pos: Position) {
-    let c: number = this.cell_size;
-    return [
-      ...this.getClosest(pos),
-
-      ...this.getClosest(add(pos, [c, 0])),
-      ...this.getClosest(add(pos, [-c, 0])),
-      ...this.getClosest(add(pos, [0, c])),
-      ...this.getClosest(add(pos, [0, -c])),
-
-      ...this.getClosest(add(pos, [c, c])),
-      ...this.getClosest(add(pos, [c, -c])),
-      ...this.getClosest(add(pos, [-c, c])),
-      ...this.getClosest(add(pos, [-c, -c]))
-    ];
-  }
-}
 
 // canvas size
 const W = 500;
 const W2 = W / 2;
 
-const randpos = () => [Math.random() * W - W2, Math.random() * W - W2];
-
-const randdir =
-    (n = 1) => [Math.random() * n * 2 - n, Math.random() * n * 2 - n];
-
-const distance = (a, b) =>
-    Math.sqrt((a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1]));
-
 const stiple = (n) => {
-  let points = [];
-  let h = new SpatialMap(20);
-  for (var i = 0; i < n; i++) {
-    let newpos = randpos();
-    let d = 10;
-    // let d = 20 * distance(newpos, [0, 0]) / W2;
-    // d = 10 - d;
-    // d *= 0.5;
-    // d *= Math.sin(d);
+  const perlin3D = new Perlin({dimensions: 2, wavelength: 0.5, octaves: 5})
 
-    // d *= ((newpos[0] % 40) + 20) / 20;
-    // d *= ((newpos[1] % 40) + 20) / 20;
+  let points = [];
+  let h = new SpatialMap(10);
+  for (var i = 0; i < n; i++) {
+    let newpos = randpos(W);
+    let d = 10;
+    d -= perlin3D.get(scale(newpos, 1 / W2)) * 10;
+
+    // d *= distance(newpos, [0, 0]) / W2;
+    // d = 10 - d;
+    // d *= 0.9;
+    // d *= Math.sin(d / 2);
+    // d *= 2.;
+    let cellSize = W2 / 6.;
+    let cellPos = newpos.map((x) => Math.floor(x / cellSize) * cellSize);
+    // d = distance(subN2(cellPos, -cellSize / 2), [0, 0]) / W2;
+
+    let p = perlin3D.get(scale(cellPos, 5 / W2))
+    d = p * p * 16;
+
+    // d *= 20;
+    // let cellpos = newpos
     // d = Math.abs(d);
-    // d *= 5.;
-    // d = Math.max(d, 2);
+    // d = x + y;
+    d += 1.9;
+    // d = Math.max(d, 2.0);
+
     // d = Math.min(d, 10);
-    d = perlin3D.get(scale(newpos, 1 / W)) * 10;
+
     // console.log(d);
     let closePoints = h.getNeighbors(newpos);
     if (!closePoints.some((a) => distance(a, newpos) < d)) {
@@ -109,13 +65,33 @@ const stiple = (n) => {
       h.insert(newpos);
     }
   }
-  return points;
+  // return points;
+  return spatialSort(points);
+};
+
+const weirdSort = (points: Array<Position>) => {
+  return points.sort((a, b) => {
+    let gs = W / 20;  // gridSize
+    let xslot = Math.floor(a[0] / gs) - Math.floor(b[0] / gs);
+    let yslot = Math.floor(a[1] / gs) - Math.floor(b[1] / gs);
+    return xslot * yslot;
+  })
+};
+const spatialSort = (points: Array<Position>) => {
+  return points.sort((a, b) => {
+    let n = 10;
+    let gs = W / n;  // gridSize
+    let xslot = Math.floor(a[0] / gs) - Math.floor(b[0] / gs);
+    let yslot = Math.floor(a[1] / gs) - Math.floor(b[1] / gs);
+    let flip = Math.floor(a[1] / gs) % 2 === 0 ? 1 : -1
+    return (xslot * flip) - yslot * n;
+  })
 };
 // various tests for different shapes & canvas drawing options
 // each test is a standalone component (only one used at a time)
 const TESTS = {
 
-  'stiple 10k': {
+  'stiple': {
     attribs: {__diff: false},
     desc: '10,000 random rects',
     body: () =>
@@ -123,9 +99,24 @@ const TESTS = {
           fill: '#000',
           stroke: 'none',
           translate: [W2, W2],
+          size: 0.8,
         },
-         [...stiple(500000)]],
+         [...stiple(20000)]],
   },
+
+  'sortedPath': {
+    attribs: {__diff: false},
+    desc: '10,000 random rects',
+    body: () =>
+        ['polyline', {
+          fill: 'none',
+          stroke: '#000',
+          translate: [W2, W2],
+          weight: 0.2,
+        },
+         [...stiple(50000)]],
+  },
+
 
   'dash offset': {
     attribs: {},
@@ -144,31 +135,6 @@ const TESTS = {
          ]]
   },
 
-  'shape morph': {
-    attribs: {__clear: false},
-    desc:
-        'Animated semi-transparent path, stroke dash pattern, transformed origin, non-clearing background',
-    body: () => {
-      const t = Date.now() * 0.01;
-      const a = 10 + 140 * (Math.sin(t * 0.33) * 0.5 + 0.5);
-      return [
-        'path', {
-          fill: 'rgba(255,255,255,0.05)',
-          stroke: '#000',
-          weight: 3,
-          miterLimit: 1,
-          dash: [20, 20],
-          dashOffset: (t * 5) % 40,
-          translate: [W2, W2],
-          rotate: (t * 0.05) % (2 * Math.PI)
-        },
-        [
-          ['M', [-100, -100]], ['Q', [-a, 0], [0, 100]],
-          ['Q', [a, 0], [100, -100]], ['Q', [0, -a], [-100, -100]]
-        ]
-      ];
-    }
-  },
 
   'points 1k': {
     attribs: {__diff: false},
@@ -182,34 +148,9 @@ const TESTS = {
           scale: 0.6 + 0.4 * Math.sin(Date.now() * 0.005),
           shape: 'circle'
         },
-         [...repeatedly(randpos, 1000)]],
+         [...repeatedly(() => randpos(W), 1000)]],
   },
 
-  'points 10k': {
-    attribs: {__diff: false},
-    desc: '10,000 random rects',
-    body: () =>
-        ['points', {
-          fill: '#000',
-          stroke: 'none',
-          translate: [W2, W2],
-          scale: 0.6 + 0.4 * Math.sin(Date.now() * 0.005)
-        },
-         [...repeatedly(randpos, 10000)]],
-  },
-
-  'points 50k': {
-    attribs: {__diff: false},
-    desc: '50,000 random rects',
-    body: () =>
-        ['points', {
-          fill: '#000',
-          stroke: 'none',
-          translate: [W2, W2],
-          scale: 0.6 + 0.4 * Math.sin(Date.now() * 0.005)
-        },
-         [...repeatedly(randpos, 50000)]],
-  },
 
   'rounded rects': {
     attribs: {},
@@ -234,58 +175,6 @@ const TESTS = {
     }
   },
 
-  'linear gradient':
-      {
-        attribs: {},
-        desc: 'Animated linear gradients',
-        body:
-            () => [
-                [
-                  'defs', {},
-                  [
-                    'linearGradient', {id: 'grad1', from: [0, 0], to: [W, W]},
-                    [[0, '#fc0'], [1, '#0ef']]
-                  ],
-                  [
-                    'linearGradient', {
-                      id: 'grad2',
-                      from: [0, 0],
-                      to: [W, W2 + W2 * Math.sin(Date.now() * 0.005)]
-                    },
-                    [[0, '#700'], [0.5, '#d0f'], [1, '#fff']]
-                  ]
-                ],
-                ['circle', {fill: '$grad1'}, [W2, W2], W2 - 10],
-                ['rect', {fill: '$grad2'}, [125, 0], 50, W],
-                ['rect', {fill: '$grad2'}, [0, 125], W, 50]],
-      },
-
-  'radial gradient': {
-    attribs: {},
-    desc: 'Animated radial gradients (w/ alpha channel)',
-    body: () => {
-      const t = Date.now() * 0.01;
-      const x = W2 + 50 * Math.sin(t * 0.5);
-      const y = W2 + 20 * Math.sin(t * 0.3);
-      const spos = [110, 120];
-      return [
-        [
-          'defs', {},
-          [
-            'radialGradient',
-            {id: 'bg', from: [x, W - 20], to: [W2, W], r1: W, r2: 100},
-            [[0, '#07f'], [0.5, '#0ef'], [0.8, '#efe'], [1, '#af0']]
-          ],
-          [
-            'radialGradient', {id: 'sun', from: spos, to: spos, r1: 5, r2: 50},
-            [[0, '#fff'], [1, 'rgba(255,255,192,0)']]
-          ]
-        ],
-        ['circle', {fill: '$bg'}, [W2, y], W2 - 20],
-        ['circle', {fill: '$sun'}, spos, 50],
-      ];
-    }
-  },
 
   'images 1k': {
     attribs: {},
@@ -295,7 +184,7 @@ const TESTS = {
       img.src = logo;
       const w = W - 64;
       const ball = () => {
-        const p = randpos();
+        const p = randpos(W);
         const v = randdir(4);
         return () => {
           let x = p[0] + v[0];
@@ -314,29 +203,6 @@ const TESTS = {
     })()
   },
 
-  'static': {
-    attribs: {},
-    desc: 'static scene (single draw) w/ skew matrix',
-    body: (() => {
-      const body = [
-        'g', {
-          transform: Mat23.concat(
-              Mat23.translation(150, 150), Mat23.skewX(-Math.PI / 6)),
-        },
-        ['rect', {fill: '#ff0'}, [-50, -50], 100, 100],
-        [
-          'text', {
-            fill: '#00f',
-            font: '18px Menlo',
-            align: 'center',
-            baseLine: 'middle'
-          },
-          [0, 0], new Date().toISOString()
-        ]
-      ];
-      return () => body;
-    })()
-  }
 };
 
 // test case selection dropdown
@@ -387,15 +253,7 @@ scene.transform(
                },
                shapes
              ],
-
-             ['div.ma2.tc', TESTS[id].desc],
-             [
-               'a.link', {
-                 href:
-                     'https://github.com/thi-ng/umbrella/tree/develop/examples/hdom-canvas-shapes'
-               },
-               'Source code'
-             ]]),
+]),
     updateDOM());
 
 // stream combinator which triggers SVG conversion and file download
@@ -416,7 +274,7 @@ sync({
 selection.next(
     window.location.hash.length > 1 ?
         window.location.hash.substr(1).replace(/-/g, ' ') :
-        'shape morph');
+        'stiple');
 
 // HMR handling
 // terminate `scene` rstream to avoid multiple running instances after HMR
