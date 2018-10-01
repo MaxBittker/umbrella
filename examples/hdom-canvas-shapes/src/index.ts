@@ -28,34 +28,33 @@ const W = 500;
 const W2 = W / 2;
 
 const stiple = (n) => {
-  const perlin3D = new Perlin({dimensions: 2, wavelength: 0.5, octaves: 5})
+  const perlin3D = new Perlin({dimensions: 2, wavelength: 0.2, octaves: 5})
 
   let points = [];
   let h = new SpatialMap(10);
   for (var i = 0; i < n; i++) {
     let newpos = randpos(W);
-    let d = 10;
-    d -= perlin3D.get(scale(newpos, 1 / W2)) * 10;
+    let d = 5;
+    d -= perlin3D.get(scale(newpos, 1 / W2)) * 5;
 
     // d *= distance(newpos, [0, 0]) / W2;
     // d = 10 - d;
     // d *= 0.9;
     // d *= Math.sin(d / 2);
     // d *= 2.;
-    let cellSize = W2 / 6.;
-    let cellPos = newpos.map((x) => Math.floor(x / cellSize) * cellSize);
+    // let cellSize = W2 / 6.;
+    // let cellPos = newpos.map((x) => Math.floor(x / cellSize) * cellSize);
     // d = distance(subN2(cellPos, -cellSize / 2), [0, 0]) / W2;
 
-    let p = perlin3D.get(scale(cellPos, 5 / W2))
-    d = p * p * 16;
+    // let p = perlin3D.get(scale(cellPos, 5 / W2))
+    // d = p * p * 16;
 
     // d *= 20;
     // let cellpos = newpos
     // d = Math.abs(d);
     // d = x + y;
-    d += 1.9;
+    d += 1.1;
     // d = Math.max(d, 2.0);
-
     // d = Math.min(d, 10);
 
     // console.log(d);
@@ -99,9 +98,9 @@ const TESTS = {
           fill: '#000',
           stroke: 'none',
           translate: [W2, W2],
-          size: 0.8,
+          size: 1.0 / 10.0,
         },
-         [...stiple(20000)]],
+         [...stiple(1000 * 1000 * 1.1)]],
   },
 
   'sortedPath': {
