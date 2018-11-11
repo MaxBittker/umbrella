@@ -24,7 +24,9 @@ import { SpatialMap } from "./spatialMap";
 // canvas size
 const W = 700;
 const W2 = W / 2;
-
+function step(v: number, n: number): number {
+  return Math.floor(v * n) / n;
+}
 const stiple = n => {
   const perlin3D = new Perlin({ dimensions: 2, wavelength: 0.2, octaves: 5 });
 
@@ -32,9 +34,10 @@ const stiple = n => {
   let h = new SpatialMap(10);
   for (var i = 0; i < n; i++) {
     let newpos = randpos(W);
-    let d = 5;
+    let d = 7;
     d -= perlin3D.get(scale(newpos, 1 / W2)) * 5;
-
+    // let m = Math.max(Math.abs(newpos[0]), Math.abs(newpos[1]));
+    d *= 0.5 + 0.5 * step(distance(newpos, [0, 0]) / W2, 5);
     // d *= distance(newpos, [0, 0]) / W2;
     // d = 10 - d;
     // d *= 0.9;
@@ -51,7 +54,7 @@ const stiple = n => {
     // let cellpos = newpos
     // d = Math.abs(d);
     // d = x + y;
-    d += 0.8;
+    d += 0.9;
     // d = Math.max(d, 2.0);
     // d = Math.min(d, 10);
 
@@ -59,8 +62,8 @@ const stiple = n => {
     let closePoints = h.getNeighbors(newpos);
     if (
       !closePoints.some(a => distance(a, newpos) < d) &&
-      distance(newpos, [0, 0]) < W2 &&
-      (newpos[0] + W + d * 0) % 18 > 5
+      distance(newpos, [0, 0]) < W2
+      //  &&(newpos[0] + W + d * 0) % 18 > 5)
     ) {
       points.push(newpos);
       h.insert(newpos);
