@@ -1,34 +1,32 @@
-import {canvas, normalizeTree} from '@thi.ng/hdom-canvas';
+import { canvas, normalizeTree } from "@thi.ng/hdom-canvas";
 // import { canvas2D, adaptDPI } from "@thi.ng/hdom-components/canvas";
-import {dropdown} from '@thi.ng/hdom-components/dropdown';
+import { dropdown } from "@thi.ng/hdom-components/dropdown";
 // for testing SVG conversion
-import {serialize} from '@thi.ng/hiccup';
-import {convertTree} from '@thi.ng/hiccup-svg/convert';
-import {svg} from '@thi.ng/hiccup-svg/svg';
-import {fromRAF} from '@thi.ng/rstream/from/raf';
-import {stream} from '@thi.ng/rstream/stream';
-import {sync} from '@thi.ng/rstream/stream-sync';
-import {updateDOM} from '@thi.ng/transducers-hdom';
-import {range} from '@thi.ng/transducers/iter/range';
-import {repeatedly} from '@thi.ng/transducers/iter/repeatedly';
-import {map} from '@thi.ng/transducers/xform/map';
-import {add2o, subN2} from '@thi.ng/vectors/vec2';
-import Perlin from 'pf-perlin';
+import { serialize } from "@thi.ng/hiccup";
+import { convertTree } from "@thi.ng/hiccup-svg/convert";
+import { svg } from "@thi.ng/hiccup-svg/svg";
+import { fromRAF } from "@thi.ng/rstream/from/raf";
+import { stream } from "@thi.ng/rstream/stream";
+import { sync } from "@thi.ng/rstream/stream-sync";
+import { updateDOM } from "@thi.ng/transducers-hdom";
+import { range } from "@thi.ng/transducers/iter/range";
+import { repeatedly } from "@thi.ng/transducers/iter/repeatedly";
+import { map } from "@thi.ng/transducers/xform/map";
+import { add2o, subN2 } from "@thi.ng/vectors/vec2";
+import Perlin from "pf-perlin";
 
-import logo from '../assets/logo-64.png'; // ignore error, resolved by parcel
+import logo from "../assets/logo-64.png"; // ignore error, resolved by parcel
 
-import {download} from './download';
-import {distance, Position, randdir, randpos, scale} from './position';
-import {SpatialMap} from './spatialMap';
-
-
+import { download } from "./download";
+import { distance, Position, randdir, randpos, scale } from "./position";
+import { SpatialMap } from "./spatialMap";
 
 // canvas size
-const W = 500;
+const W = 700;
 const W2 = W / 2;
 
-const stiple = (n) => {
-  const perlin3D = new Perlin({dimensions: 2, wavelength: 0.2, octaves: 5})
+const stiple = n => {
+  const perlin3D = new Perlin({ dimensions: 2, wavelength: 0.2, octaves: 5 });
 
   let points = [];
   let h = new SpatialMap(10);
@@ -53,13 +51,17 @@ const stiple = (n) => {
     // let cellpos = newpos
     // d = Math.abs(d);
     // d = x + y;
-    d += 1.1;
+    d += 0.8;
     // d = Math.max(d, 2.0);
     // d = Math.min(d, 10);
 
     // console.log(d);
     let closePoints = h.getNeighbors(newpos);
-    if (!closePoints.some((a) => distance(a, newpos) < d)) {
+    if (
+      !closePoints.some(a => distance(a, newpos) < d) &&
+      distance(newpos, [0, 0]) < W2 &&
+      (newpos[0] + W + d * 0) % 18 > 5
+    ) {
       points.push(newpos);
       h.insert(newpos);
     }
@@ -70,114 +72,111 @@ const stiple = (n) => {
 
 const weirdSort = (points: Array<Position>) => {
   return points.sort((a, b) => {
-    let gs = W / 20;  // gridSize
+    let gs = W / 20; // gridSize
     let xslot = Math.floor(a[0] / gs) - Math.floor(b[0] / gs);
     let yslot = Math.floor(a[1] / gs) - Math.floor(b[1] / gs);
     return xslot * yslot;
-  })
+  });
 };
 const spatialSort = (points: Array<Position>) => {
   return points.sort((a, b) => {
     let n = 10;
-    let gs = W / n;  // gridSize
+    let gs = W / n; // gridSize
     let xslot = Math.floor(a[0] / gs) - Math.floor(b[0] / gs);
     let yslot = Math.floor(a[1] / gs) - Math.floor(b[1] / gs);
-    let flip = Math.floor(a[1] / gs) % 2 === 0 ? 1 : -1
-    return (xslot * flip) - yslot * n;
-  })
+    let flip = Math.floor(a[1] / gs) % 2 === 0 ? 1 : -1;
+    return xslot * flip - yslot * n;
+  });
 };
 // various tests for different shapes & canvas drawing options
 // each test is a standalone component (only one used at a time)
 const TESTS = {
-
-  'stiple': {
-    attribs: {__diff: false},
-    desc: '10,000 random rects',
-    body: () =>
-        ['points', {
-          fill: '#000',
-          stroke: 'none',
-          translate: [W2, W2],
-          size: 1.0 / 10.0,
-        },
-         [...stiple(1000 * 1000 * 1.1)]],
+  stiple: {
+    attribs: { __diff: false },
+    desc: "10,000 random rects",
+    body: () => [
+      "points",
+      { fill: "#000", stroke: "none", translate: [W2, W2], size: 1.0 / 20.0 },
+      [...stiple(1000 * 1000 * 1.1)]
+    ]
   },
 
-  'sortedPath': {
-    attribs: {__diff: false},
-    desc: '10,000 random rects',
-    body: () =>
-        ['polyline', {
-          fill: 'none',
-          stroke: '#000',
-          translate: [W2, W2],
-          weight: 0.2,
-        },
-         [...stiple(50000)]],
+  sortedPath: {
+    attribs: { __diff: false },
+    desc: "10,000 random rects",
+    body: () => [
+      "polyline",
+      { fill: "none", stroke: "#000", translate: [W2, W2], weight: 0.2 },
+      [...stiple(50000)]
+    ]
   },
 
-
-  'dash offset': {
+  "dash offset": {
     attribs: {},
-    desc: 'Simple path w/ animated stroke dash pattern',
-    body: () =>
-        ['path', {
-          fill: 'blue',
-          stroke: '#000',
-          weight: 3,
-          dash: [4, 8],
-          dashOffset: (Date.now() * 0.01) % 12
-        },
-         [
-           ['M', [10, 10]], ['Q', [W2, W2], [W2, W - 10]],
-           ['Q', [W2, W2], [W - 10, 10]], ['Q', [W2, W2], [10, 10]]
-         ]]
+    desc: "Simple path w/ animated stroke dash pattern",
+    body: () => [
+      "path",
+      {
+        fill: "blue",
+        stroke: "#000",
+        weight: 3,
+        dash: [4, 8],
+        dashOffset: (Date.now() * 0.01) % 12
+      },
+      [
+        ["M", [10, 10]],
+        ["Q", [W2, W2], [W2, W - 10]],
+        ["Q", [W2, W2], [W - 10, 10]],
+        ["Q", [W2, W2], [10, 10]]
+      ]
+    ]
   },
 
-
-  'points 1k': {
-    attribs: {__diff: false},
-    desc: '1,000 random circles',
-    body: () =>
-        ['points', {
-          fill: '#000',
-          stroke: 'none',
-          size: 4,
-          translate: [W2, W2],
-          scale: 0.6 + 0.4 * Math.sin(Date.now() * 0.005),
-          shape: 'circle'
-        },
-         [...repeatedly(() => randpos(W), 1000)]],
+  "points 1k": {
+    attribs: { __diff: false },
+    desc: "1,000 random circles",
+    body: () => [
+      "points",
+      {
+        fill: "#000",
+        stroke: "none",
+        size: 4,
+        translate: [W2, W2],
+        scale: 0.6 + 0.4 * Math.sin(Date.now() * 0.005),
+        shape: "circle"
+      },
+      [...repeatedly(() => randpos(W), 1000)]
+    ]
   },
 
-
-  'rounded rects': {
+  "rounded rects": {
     attribs: {},
-    desc: 'Rounded rects w/ animated corner radii',
+    desc: "Rounded rects w/ animated corner radii",
     body: () => {
       const t = Date.now() * 0.01;
       const r = 100 * (Math.sin(t * 0.5) * 0.5 + 0.5);
       return [
-        'g', {
+        "g",
+        {
           weight: 1,
-          stroke: '#00f',
-          align: 'center',
-          baseLine: 'middle',
-          font: '48px Menlo',
+          stroke: "#00f",
+          align: "center",
+          baseLine: "middle",
+          font: "48px Menlo",
           __normalize: false
         },
         ...map(
-            (i) => ['rect', null, [i, i], W - 2 * i, W - 2 * i, r],
-            range(10, 50, 5)),
-        ['text', {}, [W2, W2], Math.round(r)]
+          i => ["rect", null, [i, i], W - 2 * i, W - 2 * i, r],
+          range(10, 50, 5)
+        ),
+        ["text", {}, [W2, W2], Math.round(r)]
       ];
     }
   },
 
-
-  'images 1k': {
+  "images 1k": {
     attribs: {},
-    desc: '1,000 stateful image sprite components',
+    desc: "1,000 stateful image sprite components",
     body: (() => {
       const img = new Image();
       img.src = logo;
@@ -188,32 +187,34 @@ const TESTS = {
         return () => {
           let x = p[0] + v[0];
           let y = p[1] + v[1];
-          (x < 0) && (x *= -1, v[0] *= -1);
-          (y < 0) && (y *= -1, v[1] *= -1);
-          (x > w) && (x = w - (x - w), v[0] *= -1);
-          (y > w) && (y = w - (y - w), v[1] *= -1);
+          x < 0 && ((x *= -1), (v[0] *= -1));
+          y < 0 && ((y *= -1), (v[1] *= -1));
+          x > w && ((x = w - (x - w)), (v[0] *= -1));
+          y > w && ((y = w - (y - w)), (v[1] *= -1));
           p[0] = x;
           p[1] = y;
-          return ['img', {}, [...p], img];
+          return ["img", {}, [...p], img];
         };
       };
-      const body = ['g', {}, ...repeatedly(ball, 1000)];
+      const body = ["g", {}, ...repeatedly(ball, 1000)];
       return () => body;
     })()
-  },
-
+  }
 };
 
 // test case selection dropdown
-const choices = (_, target, id) =>
-    [dropdown, {
-      class: 'w4 ma2',
-      onchange: (e) => {
-        window.location.hash = e.target.value.replace(/\s/g, '-');
-        target.next(e.target.value);
-      }
-    },
-     Object.keys(TESTS).map((k) => [k, k]), id];
+const choices = (_, target, id) => [
+  dropdown,
+  {
+    class: "w4 ma2",
+    onchange: e => {
+      window.location.hash = e.target.value.replace(/\s/g, "-");
+      target.next(e.target.value);
+    }
+  },
+  Object.keys(TESTS).map(k => [k, k]),
+  id
+];
 
 // event stream for triggering SVG conversion / export
 const trigger = stream<boolean>();
@@ -222,58 +223,63 @@ const selection = stream<string>();
 
 // stream combinator updating & normalizing selected test component tree
 // (one of the inputs is linked to RAF to trigger updates)
-const scene =
-    sync({src: {id: selection, time: fromRAF()}})
-        .transform(
-            map(({id}) => ({id, shapes: normalizeTree({}, TESTS[id].body())})));
+const scene = sync({ src: { id: selection, time: fromRAF() } }).transform(
+  map(({ id }) => ({ id, shapes: normalizeTree({}, TESTS[id].body()) }))
+);
 
 // stream transformer to produce & update main user interface root component
 scene.transform(
-    map(({id, shapes}) =>
-            ['div.vh-100.flex.flex-column.justify-center.items-center.code.f7',
-             [
-               'div', [choices, selection, id],
-               [
-                 'button.ml2', {onclick: () => trigger.next(true)},
-                 'convert & export'
-               ]
-             ],
+  map(({ id, shapes }) => [
+    "div.vh-100.flex.flex-column.justify-center.items-center.code.f7",
+    [
+      "div",
+      [choices, selection, id],
+      ["button.ml2", { onclick: () => trigger.next(true) }, "convert & export"]
+    ],
 
-             // hdom-canvas component w/ injected `scene` subtree
-             // turn __normalize off because `scene` already contains
-             // normalized tree
-             [
-               canvas, {
-                 class: 'ma2',
-                 width: W,
-                 height: W,
-                 __normalize: false,
-                 ...TESTS[id].attribs
-               },
-               shapes
-             ],
-]),
-    updateDOM());
+    // hdom-canvas component w/ injected `scene` subtree
+    // turn __normalize off because `scene` already contains
+    // normalized tree
+    [
+      canvas,
+      {
+        class: "ma2",
+        width: W,
+        height: W,
+        __normalize: false,
+        ...TESTS[id].attribs
+      },
+      shapes
+    ]
+  ]),
+  updateDOM()
+);
 
 // stream combinator which triggers SVG conversion and file download
 // when both inputs have triggered (one of them being linked to the export
 // button)
 sync({
-  src: {scene, trigger},
+  src: { scene, trigger },
   reset: true,
-  xform:
-      map(({scene}) => download(
-              new Date().toISOString().replace(/[:.-]/g, '') + '.svg',
-              serialize(
-                  svg({width: 300, height: 300, stroke: 'none', fill: 'none'},
-                      convertTree(scene.shapes)))))
+  xform: map(({ scene }) =>
+    download(
+      new Date().toISOString().replace(/[:.-]/g, "") + ".svg",
+      serialize(
+        svg(
+          { width: 700, height: 700, stroke: "none", fill: "none" },
+          convertTree(scene.shapes)
+        )
+      )
+    )
+  )
 });
 
 // seed initial test selection
 selection.next(
-    window.location.hash.length > 1 ?
-        window.location.hash.substr(1).replace(/-/g, ' ') :
-        'stiple');
+  window.location.hash.length > 1
+    ? window.location.hash.substr(1).replace(/-/g, " ")
+    : "stiple"
+);
 
 // HMR handling
 // terminate `scene` rstream to avoid multiple running instances after HMR
