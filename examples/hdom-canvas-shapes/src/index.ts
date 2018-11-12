@@ -34,23 +34,26 @@ const stiple = n => {
   let h = new SpatialMap(10);
   for (var i = 0; i < n; i++) {
     let newpos = randpos(W);
-    let d = 7;
+    let d = 5.5;
     d -= perlin3D.get(scale(newpos, 1 / W2)) * 5;
     // let m = Math.max(Math.abs(newpos[0]), Math.abs(newpos[1]));
-    d *= 0.5 + 0.5 * step(distance(newpos, [0, 0]) / W2, 5);
+    // d *=
+    // 0.5 + 0.5 * (0.5 + Math.sin(step(distance(newpos, [0, 0]) / W2, 5) * 10));
     // d *= distance(newpos, [0, 0]) / W2;
     // d = 10 - d;
     // d *= 0.9;
     // d *= Math.sin(d / 2);
     // d *= 2.;
-    // let cellSize = W2 / 6.;
-    // let cellPos = newpos.map((x) => Math.floor(x / cellSize) * cellSize);
+    let cellSize = W2 / 6;
+    let cellPos = newpos.map(x => Math.floor(x / cellSize) * cellSize);
     // d = distance(subN2(cellPos, -cellSize / 2), [0, 0]) / W2;
 
-    // let p = perlin3D.get(scale(cellPos, 5 / W2))
+    let p = perlin3D.get(scale(cellPos, 5 / W2));
     // d = p * p * 16;
-
-    // d *= 20;
+    if (p > 0.5) {
+      d = 40;
+    }
+    // d *= 2;
     // let cellpos = newpos
     // d = Math.abs(d);
     // d = x + y;
@@ -61,8 +64,9 @@ const stiple = n => {
     // console.log(d);
     let closePoints = h.getNeighbors(newpos);
     if (
-      !closePoints.some(a => distance(a, newpos) < d) &&
-      distance(newpos, [0, 0]) < W2
+      !closePoints.some(a => distance(a, newpos) < d)
+      // &&
+      // distance(newpos, [0, 0]) < W2
       //  &&(newpos[0] + W + d * 0) % 18 > 5)
     ) {
       points.push(newpos);
@@ -83,7 +87,7 @@ const weirdSort = (points: Array<Position>) => {
 };
 const spatialSort = (points: Array<Position>) => {
   return points.sort((a, b) => {
-    let n = 10;
+    let n = 20;
     let gs = W / n; // gridSize
     let xslot = Math.floor(a[0] / gs) - Math.floor(b[0] / gs);
     let yslot = Math.floor(a[1] / gs) - Math.floor(b[1] / gs);
@@ -93,14 +97,20 @@ const spatialSort = (points: Array<Position>) => {
 };
 // various tests for different shapes & canvas drawing options
 // each test is a standalone component (only one used at a time)
+const n = 10;
 const TESTS = {
   stiple: {
     attribs: { __diff: false },
     desc: "10,000 random rects",
     body: () => [
       "points",
-      { fill: "#000", stroke: "none", translate: [W2, W2], size: 1.0 / 20.0 },
-      [...stiple(1000 * 1000 * 1.1)]
+      {
+        fill: "#000",
+        stroke: "#000",
+        translate: [W2, W2],
+        size: 1.0 / (2 * n)
+      },
+      [...stiple(1000 * 100 * n * 1.1)]
     ]
   },
 
@@ -109,7 +119,7 @@ const TESTS = {
     desc: "10,000 random rects",
     body: () => [
       "polyline",
-      { fill: "none", stroke: "#000", translate: [W2, W2], weight: 0.2 },
+      { fill: "000", stroke: "#000", translate: [W2, W2], weight: 0.2 },
       [...stiple(50000)]
     ]
   },
